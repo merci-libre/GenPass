@@ -10,7 +10,7 @@ compile the `average_calculator.c` program.
 ## About
 Pretty much, the program generates a 25-byte long string from an matrix of numbers that represent ASCII characters.
 The average bit entropy of the `1000` passwords I generated was `148.616` using the zxcvbn algorithm (https://dropbox.tech/security/zxcvbn-realistic-password-strength-estimation), 
-however feel free to test larger data sets.
+however feel free to test larger data sets. I also included a generated list from KeePassXC's password generating algorithm, just for users to verify certain statistics.
 
 ## Usage
 To use the password-generator, simply call `pw-gen`. It supports `STDOUT` so you pipe the outputted password to a file if you wish.
