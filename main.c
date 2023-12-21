@@ -54,8 +54,8 @@
 #include <unistd.h>
 
 // add user defined rows and columns?
-#define ROWS 4
-#define COLS 4
+#define ROWS 8
+#define COLS 8
 
 typedef struct seeds {
   int ascii[94];
