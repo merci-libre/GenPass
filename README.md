@@ -13,4 +13,4 @@ The average bit entropy of the `1000` passwords I generated at length 25 was `14
 however feel free to test larger data sets. I also included a generated list from KeePassXC's password generating algorithm, just for users to verify certain statistics.
 
 ## Usage
-To use the password-generator, simply call `genpass -l <LENGTH>`. It supports `STDOUT` so you pipe the outputted password to a file if you wish.
+To use the password-generator, simply call `genpass -l <LENGTH>`. It supports `STDOUT` so you can pipe the outputted password to a file if you wish.
