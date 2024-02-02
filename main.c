@@ -65,6 +65,7 @@ typedef struct seeds {
 
 typedef struct arg {
   int verbosity;
+  int charset_;
 } arg;
 
 typedef struct strings {
@@ -75,10 +76,22 @@ strings string;
 arg args;
 
 /* Ascii_load: Loads all of the printable characters in ASCII*/
-void ascii_load() {
-  int x = 0;
-  for (int i = 32; i < 127; i++) {
-    seed.ascii[i - 32] = i;
+void ascii_load(int space) {
+  int x;
+  int finalchar;
+  switch (space) {
+  case 0:
+    x = 32;
+    break;
+  case 1:
+    x = 33;
+    break;
+  }
+  for (int i = x; i < 127; i++) {
+    seed.ascii[i - x] = i;
+  }
+  if (args.verbosity == 1) {
+    fprintf(stderr, "starting ascii character: '%c'\n", x);
   }
 }
 /* Gordian Knot algorithm */
@@ -174,7 +187,7 @@ void sandwich(int length) {
   // init matrix
   int matrix[ROWS][COLS];
   // Load the ascii table's printable characters.
-  ascii_load();
+  ascii_load(args.charset_);
   string_generator(matrix, length);
   for (int i = 0; i < length; i++) {
     if (args.verbosity == 1) {
@@ -197,15 +210,21 @@ void sandwich(int length) {
 
 void printhelp() {
   fprintf(stderr, "usage: genpass -l <LENGTH> | genpass [OPTION] <argument>\n");
-  fprintf(stderr, "OPTIONS:\n-l <integer> : length of password generated.\n"
+  fprintf(stderr, "OPTIONS:\n-c : removes spaces as a character (character "
+                  "32).\n-l <integer> : "
+                  "length of password generated.\n"
                   "-v : be verbose.\n-h : print help menu.\n");
 }
 
 /* Enumarate arguments, and parse user input for invalid input.*/
 int main(int argc, char *argv[]) {
   int option;
-  while ((option = getopt(argc, argv, "vl:h")) != -1) {
+  while ((option = getopt(argc, argv, "cvl:h")) != -1) {
     switch (option) {
+    case 'c':
+      args.charset_ = 1;
+      break;
+
     case 'l':
       // if the argument is less than 0 or is 0,
       if ((strcmp(optarg, "0") == 0) || atoi(optarg) <= 0) {
