@@ -1,50 +1,3 @@
-/*
- * The password generator works like so
- *
- * 1. An array called 'characters' is created, there can be custom set
- * characters defined in text files, OR use a standard ASCII/UTF-8 character
- * set.
- * 2. each character is generated as a random number is seeded and multiplied by
- * the one's digit of seconds of the current time:
- *
- * i.e take the string:
- *
- * 3f-30c94m.Sfme
- *      ^------------ the generation for this letter
- *                    would be as follows:
- *
- *                    int seed
- *                    int p = time (second)
- *                    char character[x]
- *
- *
- *                    character_select = (p*random)%16.
- *                     |
- *                     |
- *                     |
- *                     |--------> seeds to a 4*4 matrix, filled from random
- * numbers based on the amount of characters.
- *                                    ||
- *                                    ||            x=random%128, where 32<x<127
- *                                    ||
- *                                    ||==========> |34|43|54|95|
- *                                                  |72|23|44|55|
- *                  the number generated <========= |52|41|33|24|
- *                  is used as a reference          |43|36|15|_x|
- *                  point to select a
- *                  corresponding integer.
- *                  refered to as character[x]
- *
- *
- *
- * EVALUATE:
- * - possible vulnerability with using seconds, needs to be more complex.
- *   (p*random*)
- *
- *
- *
- *
- */
 #include <ctype.h>
 #include <math.h>
 #include <stdio.h>
@@ -66,6 +19,8 @@ typedef struct seeds {
 typedef struct arg {
   int verbosity;
   int charset_;
+  int uol;
+  int mmod; // mod modifier.
 } arg;
 
 typedef struct strings {
@@ -76,24 +31,121 @@ strings string;
 arg args;
 
 /* Ascii_load: Loads all of the printable characters in ASCII*/
+void loadbuffer(int x) {
+  int y;
+  int c;
+
+  switch (args.uol) { // defined by -x, -u, -m, -n
+  case 0:             // do this for spaces and all chars.
+    y = 127;
+    c = 1;
+    break;
+  case 1: // caps only. -u
+    y = 91;
+    c = 1;
+    break;
+  case 2: // lowercase only. -x
+    y = 123;
+    c = 1;
+    break;
+  case 3: // numbers only. -n
+    y = 58;
+    c = 1;
+    break;
+  case 4: // upper and lowercase.-m
+    y = 91;
+    c = 2;
+    break;
+
+  default: // print an error message if something goes wrong.
+    fprintf(stderr, "Error determining the value of `args.uol`! check "
+                    "loadbuffer() function.\n");
+    fprintf(stderr, "value of args.uol=%d;\n", args.uol);
+    break;
+  }
+
+  if (args.verbosity == 1) {
+    fprintf(stderr, "starting ascii value loaded: '%c'\n", x);
+    fprintf(stderr, "last ascii value loaded: '%c'\n", y - 1);
+    fprintf(stderr, "values %d->%d loaded into seed.ascii[]\n ", x, y - 1);
+  }
+  for (int z = 0; z < c; z++) {
+    for (int i = x; i < y; i++) {
+      switch (c) {
+      case 1:
+        seed.ascii[i - x] = i;
+        if (args.verbosity == 1) {
+          fprintf(stderr, "values %c loaded into seed.ascii[%d]\n ", i, i - x);
+        }
+        break;
+      case 2:
+        if (z == 1) {
+          seed.ascii[i - x + 26] = i;
+          if (args.verbosity == 1) {
+            fprintf(stderr, "values %c loaded into seed.ascii[%d]\n ", i,
+                    i - x + 26);
+          }
+        } else {
+          seed.ascii[i - x] = i;
+          if (args.verbosity == 1) {
+            fprintf(stderr, "values %c loaded into seed.ascii[%d]\n ", i,
+                    i - x);
+          }
+        }
+        break;
+      default:
+
+        fprintf(stderr, "Error loading buffer `seed.ascii[]`! check "
+                        "loadbuffer() function.\n");
+        break;
+      }
+    }
+    // if doing a combination of numbers/letters. unused otherwise.
+    x = x + 32;
+    y = y + 32;
+  }
+}
+
 void ascii_load(int space) {
   int x;
   int finalchar;
   switch (space) {
-  case 0:
+  case 0: // all characters
     x = 32;
+    args.uol = 0;
+    loadbuffer(x);
     break;
-  case 1:
+  case 1: // exclude space -c
     x = 33;
+    args.uol = 0;
+    loadbuffer(x);
     break;
-  }
-  for (int i = x; i < 127; i++) {
-    seed.ascii[i - x] = i;
-  }
-  if (args.verbosity == 1) {
-    fprintf(stderr, "starting ascii character: '%c'\n", x);
+  case 2: // caps only -u
+    x = 65;
+    args.uol = 1;
+    loadbuffer(x);
+    break;
+  case 3: // lowercase only -x
+    x = 97;
+    args.uol = 2;
+    loadbuffer(x);
+    break;
+  case 4: // numbers only -n
+    x = 48;
+    args.uol = 3;
+    loadbuffer(x);
+    break;
+  case 5: // mix upper and lower -m
+    x = 65;
+    args.uol = 4;
+    loadbuffer(x);
+    break;
+  default:
+    fprintf(stderr, "Error! check ascii_load() function.\n");
+    break;
   }
 }
+
 /* Gordian Knot algorithm */
 void string_generator(int matrix[ROWS][COLS],
                       int length) { // Where the magic happens.
@@ -150,7 +202,7 @@ void string_generator(int matrix[ROWS][COLS],
     // Load the matrix with characters.
     for (int x = 0; x < ROWS; x++) {
       for (int y = 0; y < COLS; y++) {
-        int z = rand() % 94;
+        int z = rand() % args.mmod;
         matrix[x][y] = seed.ascii[z];
       }
     }
@@ -172,6 +224,7 @@ void string_generator(int matrix[ROWS][COLS],
   }
   if (args.verbosity == 1) {
     fprintf(stderr, "\n");
+    fprintf(stderr, "Random number modifier=%d\n", args.mmod);
     fprintf(stderr, "Generated String: ");
   }
 }
@@ -188,6 +241,7 @@ void sandwich(int length) {
   int matrix[ROWS][COLS];
   // Load the ascii table's printable characters.
   ascii_load(args.charset_);
+
   string_generator(matrix, length);
   for (int i = 0; i < length; i++) {
     if (args.verbosity == 1) {
@@ -210,8 +264,11 @@ void sandwich(int length) {
 
 void printhelp() {
   fprintf(stderr, "usage: genpass -l <LENGTH> | genpass [OPTION] <argument>\n");
-  fprintf(stderr, "OPTIONS:\n-c : removes spaces as a character (character "
-                  "32).\n-l <integer> : "
+  fprintf(stderr, "CHARACTER GENERATION OPTIONS:\n-c : removes spaces as a "
+                  "character (character "
+                  "32).\n-u : uppercase letters only\n-x : lowercase letters "
+                  "only \n-m : does a mix of upper and lowercase letters only "
+                  "\n-n : numbers only\n\nMAIN OPTIONS:\n-l <integer> : "
                   "length of password generated.\n"
                   "-v : be verbose.\n-h : print help menu.\n");
 }
@@ -219,12 +276,36 @@ void printhelp() {
 /* Enumarate arguments, and parse user input for invalid input.*/
 int main(int argc, char *argv[]) {
   int option;
-  while ((option = getopt(argc, argv, "cvl:h")) != -1) {
+  args.mmod = 94;
+  // defined by -x, -u, -m, -n
+  while ((option = getopt(argc, argv, "cuxnmvl:h")) != -1) {
     switch (option) {
+    /* CHARACTER OPTIONS */
+
+    // characters only (no spaces)
     case 'c':
       args.charset_ = 1;
+      args.mmod = 93;
+      break;
+    case 'u': // uppercase
+      args.charset_ = 2;
+      args.mmod = 26;
+      break;
+    case 'x': // lowercase
+      args.charset_ = 3;
+      args.mmod = 26;
+      break;
+    case 'n': // numbers only
+      args.charset_ = 4;
+      args.mmod = 10;
+      break;
+    case 'm': // mixed chars.
+      args.charset_ = 5;
+      args.mmod = 52;
       break;
 
+    /* MAIN OPTIONS */
+    // length
     case 'l':
       // if the argument is less than 0 or is 0,
       if ((strcmp(optarg, "0") == 0) || atoi(optarg) <= 0) {
@@ -245,19 +326,23 @@ int main(int argc, char *argv[]) {
         exit(2);
       }
       break;
+    // help menu
     case 'h':
       printhelp();
       exit(2);
       break;
+    // verbosity
     case 'v':
       args.verbosity = 1;
       break;
+    // invalid argument.
     default:
       printhelp();
       exit(2);
       break;
     }
   }
+  // no argument given.
   if (argc <= 1) {
     printhelp();
   }
