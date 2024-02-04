@@ -33,5 +33,7 @@ For example, `genpass -n -l 20` would generate a string of numbers with the leng
 ## Windows support
 Feel free to fork the program with a precompiled Windows binary included. I might create one eventually, but it's not particularly high on my 'todo list.'
 Some notes for developers:
+```
     1. The pseudorandom number generation in the Gordion Knot Algorithm uses the PID in it's seed generation. This is the only function that requires a system library.
     2. You may also want to include a GUI for Windows as I have 0 experience in UI/UX design, which is why I intended this software to be used as a CLI program.
+```
