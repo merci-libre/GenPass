@@ -12,8 +12,9 @@
 
 typedef struct seeds {
   int ascii[94];
-  int newseed;
-  int generated;
+  long long int newseed;
+  long long int generated;
+  long long int initial;
 } seeds;
 
 typedef struct arg {
@@ -106,10 +107,10 @@ void loadbuffer(int x) {
   }
 }
 
-void ascii_load(int space) {
+void ascii_load(int charset) {
   int x;
   int finalchar;
-  switch (space) {
+  switch (charset) {
   case 0: // all characters
     x = 32;
     args.uol = 0;
@@ -150,6 +151,7 @@ void ascii_load(int space) {
 void string_generator(int matrix[ROWS][COLS],
                       int length) { // Where the magic happens.
   int iterations;
+  int lumpsum;
 
   // check the value of length to properly iterate the length of
   // repeated matrices
@@ -171,6 +173,14 @@ void string_generator(int matrix[ROWS][COLS],
    * loads the ascii value from the 94 printable characters and then seeds it
    * back into s.
    *
+   *
+   * C = amount of characters.
+   * n = length
+   *
+   * C = 96
+   * n = user (8)
+   * Entropy = log2(96^8)
+   *
    * string_generator(): // the 'gordian knot'.
    *                          [do 16 times]
    *       |->F(s)->srand(s)--|-|-|-|-|-|-|->rand()%94
@@ -189,36 +199,34 @@ void string_generator(int matrix[ROWS][COLS],
    *               |->matrix[x][y]->string_generator()
    *
    * */
-
+  seed.initial = (time(NULL) * getpid());
   for (int z = 0; z < iterations; z++) {
     // generate the seeds
-    seed.generated = time(NULL) * getpid() + seed.newseed * z;
+    seed.generated = (seed.initial + seed.newseed + (z * rand())) * 3;
     srand(seed.generated);
     // debugging
     if (args.verbosity == 1) {
-      fprintf(stderr, "\ngenerated seed=%d\n", seed.generated);
+      fprintf(stderr, "\ninitial seed=%lld\n", seed.generated);
+      fprintf(stderr, "\ngenerated seed=%lld\n", seed.generated);
       fprintf(stderr, "\niteration=%d\n", z + 1);
     }
     // Load the matrix with characters.
-    for (int x = 0; x < ROWS; x++) {
-      for (int y = 0; y < COLS; y++) {
-        int z = rand() % args.mmod;
-        matrix[x][y] = seed.ascii[z];
-      }
-    }
-
     for (int x = 0; x < ROWS; x++) {
       if (args.verbosity == 1) {
         fprintf(stderr, "\n");
       }
       for (int y = 0; y < COLS; y++) {
+        int character = rand() % args.mmod;
+        matrix[x][y] = seed.ascii[character];
+        lumpsum = lumpsum + matrix[x][y];
         // printing the table
         if (args.verbosity == 1) {
           fprintf(stderr, "[%c]", matrix[x][y]);
         }
         // truncate the string
         string.betterstring[(z * ROWS * COLS) + (x * COLS + y)] = matrix[x][y];
-        seed.newseed = getpid() * 4096;
+
+        seed.newseed = rand() + lumpsum * seed.initial;
       }
     }
   }
